@@ -214,7 +214,7 @@ class FiniteStateMachine(object):
     def state(self):
         return self.__state__
 
-    def transition(self, to=None, triggered_event_description=None, transition_tailored_arguments=None):
+    def transition(self, to=None, triggering_event=None, transition_arguments=None):
         """
         Transitions the finite state machine to a new state.
 
@@ -231,16 +231,16 @@ class FiniteStateMachine(object):
             raise FiniteStateMachineError('The transition from %s to %s is invalid.' % (self.__state__, to))
         # If there are any guards lets execute those now.
         if 'guard' in transition.get('end_state'):
-            allowed = transition.get('end_state').get('guard')(transition_tailored_arguments)
+            allowed = transition.get('end_state').get('guard')(transition_arguments)
             if not isinstance(allowed, bool):
                 raise FiniteStateMachineError('A guard must only return True or False values.')
             if not allowed:
                 raise FiniteStateMachineError('A guard declined the transition from %s to %s.' % (self.__state__, to))
         # Try to execute the action associated with leaving the current state.
         if 'on_exit' in transition.get('beginning_state'):
-            transition.get('beginning_state').get('on_exit')(triggered_event_description, transition_tailored_arguments)
+            transition.get('beginning_state').get('on_exit')(triggering_event, transition_arguments)
         # Try to execute the action associated with entering the new state.
         if 'on_entry' in transition.get('end_state'):
-            transition.get('end_state').get('on_entry')(triggered_event_description, transition_tailored_arguments)
+            transition.get('end_state').get('on_entry')(triggering_event, transition_arguments)
         # Enter the new state and we're done.
         self.__state__ = to
