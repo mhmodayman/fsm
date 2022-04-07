@@ -1,4 +1,4 @@
-from backend.algorithm.configuration.FSM.fsm import *
+from fsm import *
 from unittest import TestCase, expectedFailure
 
 
@@ -17,13 +17,13 @@ class AbstractLightBulb(FiniteStateMachine):
 
 class LightBulb(AbstractLightBulb):
     # Handle incoming events.
-    def on_message(self, message, transition_arguments):
+    def on_message(self, message, transition_tailored_arguments):
         if message == 'turn on':
-            self.transition(to='on', triggered_event_description=message, transition_tailored_arguments=transition_arguments)
+            self.transition(to='on', triggering_event=message, transition_arguments=transition_tailored_arguments)
         elif message == 'turn off':
-            self.transition(to='off', triggered_event_description=message, transition_tailored_arguments=transition_arguments)
+            self.transition(to='off', triggering_event=message, transition_arguments=transition_tailored_arguments)
         elif message == 'break':
-            self.transition(to='broken', triggered_event_description=message, transition_tailored_arguments=transition_arguments)
+            self.transition(to='broken', triggering_event=message, transition_arguments=transition_tailored_arguments)
 
     @Guard(state='on')
     def check_electricity(self, next_state_tailored_arguments):
@@ -91,10 +91,10 @@ class LightBulbTests(TestCase):
         light_bulb = LightBulb()
         light_bulb.electricity = True
         self.assertTrue(light_bulb.state() == 'off')
-        light_bulb.on_message(message='turn on', transition_arguments={})
+        light_bulb.on_message(message='turn on', transition_tailored_arguments={})
         self.assertTrue(light_bulb.state() == 'on')  # <-- assert new state of the lightbulb
         self.assertTrue(light_bulb.indicator == 'lit')  # <-- assert action taken to reach the new state
-        light_bulb.on_message(message='turn off', transition_arguments={})
+        light_bulb.on_message(message='turn off', transition_tailored_arguments={})
         self.assertTrue(light_bulb.state() == 'off')
         self.assertTrue(light_bulb.indicator == 'dim')
 
@@ -109,13 +109,13 @@ class LightBulbTests(TestCase):
         light_bulb = LightBulb()
         light_bulb.electricity = True
         self.assertTrue(light_bulb.state() == 'off')
-        light_bulb.on_message(message='turn on', transition_arguments={})
+        light_bulb.on_message(message='turn on', transition_tailored_arguments={})
         self.assertTrue(light_bulb.state() == 'on')
         self.assertTrue(light_bulb.indicator == 'lit')
-        light_bulb.on_message(message='turn off', transition_arguments={})
+        light_bulb.on_message(message='turn off', transition_tailored_arguments={})
         self.assertTrue(light_bulb.state() == 'off')
         self.assertTrue(light_bulb.indicator == 'dim')
-        light_bulb.on_message(message='break', transition_arguments={})
+        light_bulb.on_message(message='break', transition_tailored_arguments={})
         self.assertTrue(light_bulb.state() == 'broken')
         self.assertTrue(light_bulb.indicator == 'broken')
         self.assertRaises(FiniteStateMachineError, light_bulb.on_message, message='turn on', transition_arguments={})
