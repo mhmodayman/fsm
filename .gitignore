@@ -129,3 +129,5 @@ dmypy.json
 .pyre/
 
 .idea/
+_trial_temp/
+_trial_temp.lock/
