@@ -1,29 +1,19 @@
-"""Hierarchical Finite State Machine
-
-Description:
-    HFSM (Hierarchical Finite State Machine) implements full feature of HFSM.
-
-License:
-    Copyright 2020 Debby Nirwan
-
-    Licensed under the Apache License, Version 2.0 (the "License");
-    you may not use this file except in compliance with the License.
-    You may obtain a copy of the License at
-
-       http://www.apache.org/licenses/LICENSE-2.0
-
-    Unless required by applicable law or agreed to in writing, software
-    distributed under the License is distributed on an "AS IS" BASIS,
-    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-    See the License for the specific language governing permissions and
-    limitations under the License.
 """
+Hierarchical Non Deterministic Finite State Machine
+Non-deterministic finite state machines can move from src state A, to multiple dst states
+while being triggered by the same event
+
+This is an issue, and one way to resolve this issue is: backtracking by the aid of guards on the entry to all possible transitions
+Ref: https://www.freecodecamp.org/news/state-machines-basics-of-computer-science-d42855debc66/
+
+In case of one src state to many dst states, guards should be disjoint. Only one guard should be satisfied.
+"""
+
 import logging
 from typing import List, Any, Optional, Callable
 
 
 class State(object):
-
     def __init__(self, name, child_sm=None):
         self._name = name
         self._entry_callbacks: List[Callable[[Any], None]] = []
@@ -55,16 +45,14 @@ class State(object):
     def set_child_sm(self, child_sm):
         if not isinstance(child_sm, StateMachine):
             raise TypeError("child_sm must be the type of StateMachine")
-        if self._parent_state_machine and self._parent_state_machine == \
-                child_sm:
+        if self._parent_state_machine and self._parent_state_machine == child_sm:
             raise ValueError("child_sm and parent_sm must be different")
         self._child_state_machine = child_sm
 
     def set_parent_sm(self, parent_sm):
         if not isinstance(parent_sm, StateMachine):
             raise TypeError("parent_sm must be the type of StateMachine")
-        if self._child_state_machine and self._child_state_machine == \
-                parent_sm:
+        if self._child_state_machine and self._child_state_machine == parent_sm:
             raise ValueError("child_sm and parent_sm must be different")
         self._parent_state_machine = parent_sm
 
@@ -99,7 +87,6 @@ class State(object):
 
 
 class ExitState(State):
-
     def __init__(self, status="Normal"):
         self._name = "ExitState"
         self._status = status
@@ -111,7 +98,6 @@ class ExitState(State):
 
 
 class Event(object):
-
     def __init__(self, name):
         self._name = name
 
@@ -133,7 +119,6 @@ class Event(object):
 
 
 class Transition(object):
-
     def __init__(self, event: Event, src: State, dst: State):
         self._event = event
         self._source_state = src
@@ -150,6 +135,9 @@ class Transition(object):
     def add_action(self, callback: Callable[[Any], Any]):
         self._action = callback
 
+    def is_guard_satisfied(self, data):
+        return self._condition(data) is True
+
     @property
     def event(self):
         return self._event
@@ -164,62 +152,54 @@ class Transition(object):
 
 
 class NormalTransition(Transition):
-
-    def __init__(self, source_state: State, destination_state: State,
-                 event: Event):
+    def __init__(self, source_state: State, destination_state: State, event: Event):
         super().__init__(event, source_state, destination_state)
         self._from = source_state
         self._to = destination_state
 
     def __call__(self, data: Any):
-        if not self._condition or self._condition(data):
-            logging.info(f"NormalTransition from {self._from} to {self._to} "
-                         f"caused by {self._event}")
-            if self._action:
-                self._action(data)
-            self._from.stop(data)
-            self._to.start(data)
+        logging.info(f"NormalTransition from {self._from} to {self._to} "
+                     f"caused by {self._event}")
+        if self._action:
+            self._action(data)
+        self._from.stop(data)
+        self._to.start(data)
 
     def __repr__(self):
         return f"Transition {self._from} to {self._to} by {self._event}"
 
 
 class SelfTransition(Transition):
-
     def __init__(self, source_state: State, event: Event):
         super().__init__(event, source_state, source_state)
         self._state = source_state
 
     def __call__(self, data: Any):
-        if not self._condition or self._condition(data):
-            logging.info(f"SelfTransition {self._state}")
-            if self._action:
-                self._action(data)
-            self._state.stop(data)
-            self._state.start(data)
+        logging.info(f"SelfTransition {self._state}")
+        if self._action:
+            self._action(data)
+        self._state.stop(data)
+        self._state.start(data)
 
     def __repr__(self):
         return f"SelfTransition on {self._state}"
 
 
 class NullTransition(Transition):
-
     def __init__(self, source_state: State, event: Event):
         super().__init__(event, source_state, source_state)
         self._state = source_state
 
     def __call__(self, data: Any):
-        if not self._condition or self._condition(data):
-            logging.info(f"NullTransition {self._state}")
-            if self._action:
-                self._action(data)
+        logging.info(f"NullTransition {self._state}")
+        if self._action:
+            self._action(data)
 
     def __repr__(self):
         return f"NullTransition on {self._state}"
 
 
 class StateMachine(object):
-
     def __init__(self, name):
         self._name = name
         self._states: List[State] = []
@@ -280,24 +260,21 @@ class StateMachine(object):
     def add_event(self, event: Event):
         self._events.append(event)
 
-    def add_transition(self, src: State, dst: State, evt: Event) -> \
-            Optional[Transition]:
+    def add_transition(self, src: State, dst: State, evt: Event) -> Optional[Transition]:
         transition = None
         if src in self._states and dst in self._states and evt in self._events:
             transition = NormalTransition(src, dst, evt)
             self._transitions.append(transition)
         return transition
 
-    def add_self_transition(self, state: State, evt: Event) -> \
-            Optional[Transition]:
+    def add_self_transition(self, state: State, evt: Event) -> Optional[Transition]:
         transition = None
         if state in self._states and evt in self._events:
             transition = SelfTransition(state, evt)
             self._transitions.append(transition)
         return transition
 
-    def add_null_transition(self, state: State, evt: Event) -> \
-            Optional[Transition]:
+    def add_null_transition(self, state: State, evt: Event) -> Optional[Transition]:
         transition = None
         if state in self._states and evt in self._events:
             transition = NullTransition(state, evt)
@@ -319,16 +296,15 @@ class StateMachine(object):
             self._current_state.child_sm.trigger_event(evt, data, propagate)
         else:
             for transition in self._transitions:
-                if transition.source_state == self._current_state and \
-                        transition.event == evt:
-                    self._current_state = transition.destination_state
-                    transition(data)
-                    if isinstance(self._current_state, ExitState) and \
-                            self._exit_callback and not self._exited:
-                        self._exited = True
-                        self._exit_callback(self._current_state, data)
-                    transition_valid = True
-                    break
+                if transition.is_guard_satisfied(data):
+                    if transition.source_state == self._current_state and transition.event == evt:
+                        self._current_state = transition.destination_state
+                        transition(data)
+                        if isinstance(self._current_state, ExitState) and self._exit_callback and not self._exited:
+                            self._exited = True
+                            self._exit_callback(self._current_state, data)
+                        transition_valid = True
+                        break  # No more guards to be checked. (non-determinism if guards are not disjoint!)
             if not transition_valid:
                 logging.warning(f"Event {evt} is not valid in state "
                                 f"{self._current_state}")
